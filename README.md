@@ -9,7 +9,7 @@ Two slash commands, available in both Claude Code and GitHub Copilot Chat:
 - **`/docs-init`** — scaffolds `docs/AUTHORING.md`, `docs/TEMPLATE.md`, `docs/CHANGELOG.md`, and a CI pipeline snippet that auto-updates docs and the changelog on every commit.
 - **`/docs-generate`** — bootstraps documentation for your existing code. Processes components in parallel (Claude) or sequentially (Copilot), respects a per-session cap, and resumes across sessions via a persistent progress file so large projects can be documented safely over multiple runs.
 
-After `/docs-init` has been run and CI is configured, documentation keeps itself up to date — every commit triggers a Copilot CLI step that updates affected docs and appends a changelog entry with commit SHA, author, date, and a human-readable summary.
+After `/docs-init` has been run and CI is configured, documentation keeps itself up to date — every commit triggers a Copilot CLI step that checks whether the commit's doc updates cover the code changes, fills in any gaps, and appends a changelog entry. The CI step never rewrites docs that are already correct, so if you (or an AI working in your editor) kept docs in sync locally, CI becomes a no-op.
 
 ---
 
@@ -34,7 +34,14 @@ npx kse-autodocs --force     # overwrite files that already exist
 npx kse-autodocs --help      # full help
 ```
 
-Existing files are never overwritten unless you pass `--force`. Re-running the installer on an already-set-up repo is safe.
+Re-running the installer on an already-set-up repo is safe:
+
+- If the installed version matches what's in the package, all files are left alone.
+- If the package version is **newer** than what's in the repo, "library" files (shared templates, slash commands, Copilot prompts) are auto-refreshed to the new version.
+- Two files are treated as **user-owned** and never auto-overwritten: `CLAUDE.md` and `.github/copilot-instructions.md`. On an upgrade the installer leaves them alone and prints a note pointing to the updated snippets in `.github/kse-autodocs/` so you can merge changes manually.
+- `--force` overwrites everything including user-owned files. Use sparingly.
+
+The installed version is tracked in `.github/kse-autodocs/.version`.
 
 ### What gets written
 
@@ -47,8 +54,9 @@ Relative to the repo root where you run the command:
 │   ├── TEMPLATE.md
 │   ├── CHANGELOG.md
 │   ├── pipeline-snippet.azure-pipelines.yml
-│   └── pipeline-snippet.github-actions.yml
-├── copilot-instructions.md           ← if Copilot selected
+│   ├── pipeline-snippet.github-actions.yml
+│   └── CLAUDE-snippet.md              ← reference copy of CLAUDE.md content
+├── copilot-instructions.md           ← if Copilot selected (always-on rules)
 └── prompts/                          ← if Copilot selected
     ├── docs-init.prompt.md
     └── docs-generate.prompt.md
@@ -57,7 +65,13 @@ Relative to the repo root where you run the command:
 └── commands/                         ← if Claude selected
     ├── docs-init.md
     └── docs-generate.md
+
+CLAUDE.md                              ← if Claude selected (always-on rules)
 ```
+
+The `CLAUDE.md` at repo root and `.github/copilot-instructions.md` are **always-on instructions**: both AI assistants read them on every prompt. They tell the assistant to keep docs in sync with code whenever it edits source files, using `docs/AUTHORING.md` as the source of truth.
+
+If `CLAUDE.md` already exists in your repo, the installer will skip it and point you at `.github/kse-autodocs/CLAUDE-snippet.md` so you can merge the instructions into your existing file manually.
 
 Commit whichever of these you want teammates to use. The shared templates (`.github/kse-autodocs/`) are read by both `/docs-init` commands at runtime — commit them too.
 

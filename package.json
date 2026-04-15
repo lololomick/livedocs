@@ -1,6 +1,6 @@
 {
   "name": "kse-autodocs",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Scaffold and maintain developer documentation in a consistent, human-readable style. Installs commands for Claude Code and / or GitHub Copilot.",
   "bin": {
     "kse-autodocs": "bin/install.js"

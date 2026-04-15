@@ -66,20 +66,40 @@ jobs:
           mkdir -p docs
 
           PROMPT=$(cat <<'EOF'
-          You are updating documentation in the docs/ folder after a commit.
+          You are verifying and gap-filling documentation in the docs/ folder
+          after a commit. The developer may have already updated docs alongside
+          their code change — your job is to check what is missing, not to
+          rewrite what is already correct.
 
           1. Read docs/AUTHORING.md. It is the authoring guide. Follow it strictly.
           2. Read docs/TEMPLATE.md. It is the structural template for any new doc.
-          3. Run: git diff HEAD~1 -- <source-globs>
+          3. Run: git diff HEAD~1 --name-status  (see all changed files — code AND docs).
           4. For each changed source file:
              a. Read the full source file (not just the diff).
              b. Locate its matching component doc under docs/.
-             c. If the doc exists: update ONLY the sections whose subject actually changed. Preserve existing correct prose.
-             d. If the doc does not exist: SKIP it. Bootstrap is not the job of this pipeline.
-             e. If the change adds/removes enum values, error codes, or state values: update the matching reference doc in docs/Reference/ AND every inline mention in other docs.
-          5. Write all output files directly under docs/.
+             c. Check whether that doc file was also touched in this commit
+                (inspect: git diff HEAD~1 -- <doc-path>):
+                - If the dev already updated the doc AND the update correctly
+                  reflects the code change → DO NOTHING. Leave the doc alone.
+                - If the dev updated the doc but missed part of the code change
+                  (new method, changed signature, new enum value, renamed
+                  concept, changed behavior, etc.) → fill ONLY the gap. Do not
+                  rewrite the sections the dev already handled.
+                - If the doc was not touched in this commit → update only the
+                  sections whose subject actually changed. Preserve existing
+                  correct prose.
+             d. If the matching doc does not exist at all: SKIP it. Bootstrap
+                is /docs-generate's job, not this pipeline's.
+             e. If the change adds / removes enum values, error codes, or state
+                values: update the matching reference doc in docs/Reference/
+                AND every inline mention in other docs (unless the dev already
+                did so for each file).
+          5. Write output files directly under docs/.
 
           Do NOT:
+          - Rewrite docs that already correctly describe the code.
+          - Reorder sections, change headings, or restyle prose that is already
+            correct.
           - Create docs for files not in the diff.
           - Invent content the source does not support.
           - Add Further reading / History / TODO sections.
