@@ -100,8 +100,12 @@ Total: {N} components documented.
 From this point on, docs will be kept up to date automatically by
 the CI pipeline on every commit (see docs/AUTHORING.md section 8.1).
 
-You can delete docs/.docs-progress.json if you like — it is only used
-during bootstrap.
+KEEP docs/.docs-progress.json — do NOT delete it. It records which
+components are already documented and which were intentionally
+skipped. When you add new components later, /docs-generate reads
+this file and only processes what's new. Deleting it forces a fresh
+re-enumeration that may re-decide what to skip differently and miss
+the audit trail.
 ```
 
 ## Step 6 — Early stop for context pressure
