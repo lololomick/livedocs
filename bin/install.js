@@ -11,6 +11,8 @@ const CWD = process.cwd();
 const MARKER = path.join(CWD, '.github', 'kse-autodocs', '.version');
 
 const args = process.argv.slice(2);
+const positional = args.filter((a) => !a.startsWith('-'));
+const subcommand = positional[0] || 'install';
 const flags = {
   claude: args.includes('--claude'),
   copilot: args.includes('--copilot'),
@@ -50,32 +52,38 @@ kse-autodocs v${CURRENT_VERSION} — install Claude Code commands and / or GitHu
 Copilot prompts for scaffolding and maintaining developer documentation.
 
 Usage:
-  npx kse-autodocs [options]
+  npx kse-autodocs [options]           install into current repo (default)
+  npx kse-autodocs uninstall [options] remove kse-autodocs files from repo
 
 Options:
   --claude       Install Claude Code integration only
   --copilot      Install GitHub Copilot integration only
   --both         Install both (this is also the default)
-  -y, --yes      Skip the interactive prompt (implies --both)
+  -y, --yes      Skip prompts (auto-confirm)
   -f, --force    Overwrite ALL files, even user-owned ones
   --no-color     Disable ANSI colors in output
   -h, --help     Show this help
 
 What gets written (relative to the current working directory):
 
-  .github/kse-autodocs/            shared templates (always)
-  .claude/commands/*.md           Claude slash commands          (--claude)
-  CLAUDE.md                       Claude repo-wide instructions  (--claude)
-  .github/copilot-instructions.md Copilot repo-wide instructions (--copilot)
-  .github/prompts/*.prompt.md     Copilot prompt files           (--copilot)
+  .github/kse-autodocs/             shared templates (always)
+  .claude/commands/*.md             Claude slash commands          (--claude)
+  .claude/rules/kse-autodocs.md     Claude always-on rule          (--claude)
+  .github/copilot-instructions.md   Copilot repo-wide instructions (--copilot)
+  .github/prompts/*.prompt.md       Copilot prompt files           (--copilot)
 
 Auto-update behavior:
   The installer tracks the version it last wrote to this repo in
   .github/kse-autodocs/.version. On a version bump it automatically
-  refreshes "library" files (templates, slash commands, Copilot prompts).
-  Two files are treated as user-owned and are never auto-overwritten —
-  CLAUDE.md and .github/copilot-instructions.md. Use --force to
-  overwrite those.
+  refreshes "library" files (templates, slash commands, Copilot prompts,
+  and the Claude rule). Claude's rule file lives at
+  .claude/rules/kse-autodocs.md so it never collides with an existing
+  CLAUDE.md — Claude Code auto-loads all rules in that directory.
+
+  The one user-owned file is .github/copilot-instructions.md: Copilot
+  only reads that single path, so the installer will never overwrite it
+  unless --force is passed. A fresh copy is dropped at
+  .github/kse-autodocs/copilot-instructions-snippet.md for manual merging.
 `;
 
 if (flags.help) {
@@ -198,19 +206,12 @@ async function main() {
   console.log(`\n${col.bold}Shared templates${col.reset} ${col.dim}→ .github/kse-autodocs/${col.reset}`);
   copyDir(path.join(ASSETS, 'shared'), path.join(CWD, '.github', 'kse-autodocs'));
 
-  let claudeMdSkipped = false;
   if (targets.claude) {
-    console.log(`\n${col.bold}Claude Code${col.reset} ${col.dim}→ .claude/commands/ and CLAUDE.md${col.reset}`);
+    console.log(`\n${col.bold}Claude Code${col.reset} ${col.dim}→ .claude/commands/ and .claude/rules/${col.reset}`);
     copyDir(path.join(ASSETS, 'claude', 'commands'), path.join(CWD, '.claude', 'commands'));
-    const res = copyFile(
-      path.join(ASSETS, 'claude', 'CLAUDE.md'),
-      path.join(CWD, 'CLAUDE.md'),
-      { userOwned: true }
-    );
-    claudeMdSkipped = !res.written && res.existed;
     copyFile(
-      path.join(ASSETS, 'claude', 'CLAUDE.md'),
-      path.join(CWD, '.github', 'kse-autodocs', 'CLAUDE-snippet.md')
+      path.join(ASSETS, 'claude', 'rules', 'kse-autodocs.md'),
+      path.join(CWD, '.claude', 'rules', 'kse-autodocs.md')
     );
   }
 
@@ -248,15 +249,6 @@ async function main() {
   console.log(`      to scaffold ${col.cyan}docs/AUTHORING.md${col.reset} and wire up CI.\n`);
 
   const showMergeHints = firstInstall || upgrading;
-  if (claudeMdSkipped && showMergeHints) {
-    console.log(
-      `${col.yellow}NOTE:${col.reset} ${col.bold}CLAUDE.md${col.reset} already exists and was NOT overwritten.`
-    );
-    console.log(
-      `      Merge updated instructions from ${col.cyan}.github/kse-autodocs/CLAUDE-snippet.md${col.reset}`
-    );
-    console.log(`      into your CLAUDE.md so Claude picks them up on every prompt.\n`);
-  }
   if (copilotInstructionsSkipped && showMergeHints) {
     console.log(
       `${col.yellow}NOTE:${col.reset} ${col.bold}.github/copilot-instructions.md${col.reset} already exists and was NOT overwritten.`
@@ -268,7 +260,129 @@ async function main() {
   }
 }
 
-main().catch((err) => {
+// --- uninstall -----------------------------------------------------------
+
+const UNINSTALL_PATHS = [
+  ['file', '.claude/commands/docs-init.md'],
+  ['file', '.claude/commands/docs-generate.md'],
+  ['file', '.claude/rules/kse-autodocs.md'],
+  ['file', '.github/prompts/docs-init.prompt.md'],
+  ['file', '.github/prompts/docs-generate.prompt.md'],
+  ['dir', '.github/kse-autodocs'],
+];
+
+const PRESERVED_PATHS = [
+  'CLAUDE.md',
+  '.github/copilot-instructions.md',
+  'docs/',
+];
+
+function removeEmptyDir(absPath) {
+  try {
+    const entries = fs.readdirSync(absPath);
+    if (entries.length === 0) {
+      fs.rmdirSync(absPath);
+      return true;
+    }
+  } catch {
+    /* not a dir or doesn't exist */
+  }
+  return false;
+}
+
+async function runUninstall() {
+  process.stdout.write(BANNER + '\n');
+
+  const toRemove = UNINSTALL_PATHS
+    .map(([kind, rel]) => ({ kind, rel, abs: path.join(CWD, rel), exists: fs.existsSync(path.join(CWD, rel)) }))
+    .filter((x) => x.exists);
+
+  if (toRemove.length === 0) {
+    console.log(`${col.dim}Nothing to uninstall — no kse-autodocs files found in ${CWD}${col.reset}`);
+    return;
+  }
+
+  console.log(`${col.bold}The following will be removed from${col.reset} ${CWD}:\n`);
+  for (const x of toRemove) {
+    const tag = x.kind === 'dir' ? `${col.dim}(dir) ${col.reset}` : `${col.dim}(file)${col.reset}`;
+    console.log(`  ${col.red}✗${col.reset} ${tag} ${x.rel}`);
+  }
+
+  console.log(`\n${col.bold}These files will be preserved${col.reset} ${col.dim}(user-owned):${col.reset}`);
+  for (const p of PRESERVED_PATHS) {
+    console.log(`  ${col.green}✓${col.reset} ${col.dim}${p}${col.reset}`);
+  }
+  console.log();
+
+  if (!flags.yes) {
+    if (!process.stdin.isTTY) {
+      console.log(
+        `${col.red}Refusing to uninstall without a TTY.${col.reset} Pass ${col.cyan}--yes${col.reset} to confirm non-interactively.\n`
+      );
+      process.exit(1);
+    }
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const answer = (await rl.question(`${col.bold}Proceed?${col.reset} [y/N]: `)).trim().toLowerCase();
+    rl.close();
+    if (answer !== 'y' && answer !== 'yes') {
+      console.log(`\n${col.dim}Cancelled. Nothing removed.${col.reset}`);
+      return;
+    }
+    console.log();
+  }
+
+  let removed = 0;
+  for (const x of toRemove) {
+    try {
+      fs.rmSync(x.abs, { recursive: true, force: true });
+      console.log(`  ${col.red}✗${col.reset} ${x.rel}`);
+      removed++;
+    } catch (err) {
+      console.log(`  ${col.yellow}!${col.reset} ${x.rel}  ${col.dim}(${err.message})${col.reset}`);
+    }
+  }
+
+  // Clean up now-empty parent directories.
+  const parents = ['.claude/commands', '.claude/rules', '.claude', '.github/prompts'];
+  for (const rel of parents) {
+    if (removeEmptyDir(path.join(CWD, rel))) {
+      console.log(`  ${col.dim}✗ ${rel}/  (empty, removed)${col.reset}`);
+    }
+  }
+
+  const bar = '━'.repeat(56);
+  console.log(`\n${col.cyan}${bar}${col.reset}`);
+  console.log(`${col.green}✓${col.reset} kse-autodocs uninstalled  ${col.dim}(${removed} items removed)${col.reset}`);
+  console.log(`${col.cyan}${bar}${col.reset}\n`);
+
+  if (fs.existsSync(path.join(CWD, '.github/copilot-instructions.md'))) {
+    console.log(
+      `${col.yellow}NOTE:${col.reset} ${col.bold}.github/copilot-instructions.md${col.reset} was kept. If you don't use Copilot,`
+    );
+    console.log(`      you can delete it manually.`);
+  }
+  if (fs.existsSync(path.join(CWD, 'docs'))) {
+    console.log(
+      `${col.yellow}NOTE:${col.reset} ${col.bold}docs/${col.reset} was kept (your repo's documentation). Delete manually if you want.`
+    );
+  }
+}
+
+// --- entrypoint ----------------------------------------------------------
+
+async function run() {
+  if (subcommand === 'uninstall' || subcommand === 'remove') {
+    await runUninstall();
+  } else if (subcommand === 'install') {
+    await main();
+  } else {
+    console.error(`${col.red}Unknown command:${col.reset} ${subcommand}`);
+    console.error(`Run ${col.cyan}npx kse-autodocs --help${col.reset} for usage.`);
+    process.exit(1);
+  }
+}
+
+run().catch((err) => {
   console.error(err);
   process.exit(1);
 });
