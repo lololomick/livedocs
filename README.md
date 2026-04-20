@@ -1,15 +1,26 @@
+<div align="center">
+
 # livedocs
 
-Scaffolds and maintains living developer documentation in a consistent, human-readable style. Installs slash commands for **Claude Code** and / or **GitHub Copilot** into your repo with a single command — no Claude Code required to install, no configuration files to edit. Language-agnostic: works with C#, TypeScript/JavaScript, Python, Rust, Go, Java, and more.
+**Living documentation for Claude Code and GitHub Copilot — that keeps itself in sync with your code.**
 
-## What you get
+[![npm version](https://img.shields.io/npm/v/@lololomick/livedocs?style=for-the-badge&color=blue&label=npm)](https://www.npmjs.com/package/@lololomick/livedocs)
+[![npm downloads](https://img.shields.io/npm/dw/@lololomick/livedocs?style=for-the-badge&color=green&label=downloads)](https://www.npmjs.com/package/@lololomick/livedocs)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)](./LICENSE)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen?style=for-the-badge)](https://nodejs.org)
 
-Two slash commands, available in both Claude Code and GitHub Copilot Chat:
+[Install](#installation) · [Quick start](#quick-start) · [Highlights](#highlights) · [How it works](#how-it-works) · [Updating](#updating) · [Uninstalling](#uninstalling) · [Troubleshooting](#troubleshooting)
 
-- **`/docs-init`** — scaffolds `docs/AUTHORING.md`, `docs/TEMPLATE.md`, `docs/CHANGELOG.md`, and a CI pipeline snippet that auto-updates docs and the changelog on every commit.
-- **`/docs-generate`** — bootstraps documentation for your existing code. Processes components in parallel (Claude) or sequentially (Copilot), respects a per-session cap, and resumes across sessions via a persistent progress file so large projects can be documented safely over multiple runs.
+</div>
 
-After `/docs-init` has been run and CI is configured, documentation keeps itself up to date — every commit triggers a Copilot CLI step that checks whether the commit's doc updates cover the code changes, fills in any gaps, and appends a changelog entry. The CI step never rewrites docs that are already correct, so if you (or an AI working in your editor) kept docs in sync locally, CI becomes a no-op.
+---
+
+**livedocs** installs two slash commands — `/docs-init` and `/docs-generate` — that work in both **Claude Code** and **GitHub Copilot Chat**. It scaffolds a structured `docs/` folder, wires up a CI step, and keeps your documentation in sync with your code on every commit.
+
+- **No Claude Code needed to install.** No global setup, no plugin marketplace, no config files to edit.
+- **Language-agnostic.** C#, TypeScript/JavaScript, Python, Rust, Go, Java, PHP, Ruby, Swift.
+- **Safe re-install.** Every file the installer writes is tracked by SHA-256 hash; your edits are detected and never overwritten silently.
+- **Coexists with your existing Copilot instructions.** A managed region inside `copilot-instructions.md` keeps installer content and your content side-by-side.
 
 ---
 
@@ -17,34 +28,78 @@ After `/docs-init` has been run and CI is configured, documentation keeps itself
 
 Run one command inside your repo:
 
-```
+```bash
 npx @lololomick/livedocs@latest
 ```
 
-You'll be asked whether to install the Claude integration, the Copilot integration, or both (default). That's it — no Claude Code, no global setup, no plugin marketplace.
-
-If you have trouble with the interactive prompt, you can use flags to specify your choice directly:
+That's it — you'll be asked whether to install the Claude integration, the Copilot integration, or both (default).
 
 ### Flags
 
-```
-npx @lololomick/livedocs@latest --both      # install both (same as the interactive default)
+```bash
+npx @lololomick/livedocs@latest --both      # install both (also the default)
 npx @lololomick/livedocs@latest --claude    # install Claude Code commands only
 npx @lololomick/livedocs@latest --copilot   # install Copilot prompts only
-npx @lololomick/livedocs@latest --yes       # non-interactive; managed files refresh, user-modified files skip
-npx @lololomick/livedocs@latest --force     # overwrite every file, including user-modified ones
-npx @lololomick/livedocs@latest --dry-run   # show what would change without touching any files
+npx @lololomick/livedocs@latest --yes       # non-interactive (keep user-modified files)
+npx @lololomick/livedocs@latest --force     # overwrite every file, including user-modified
+npx @lololomick/livedocs@latest --dry-run   # show what would change without touching anything
 npx @lololomick/livedocs@latest --help      # full help
 ```
 
-Re-running the installer on an already-set-up repo is safe. Every file the installer writes is recorded in `.github/livedocs/.manifest.json` with a SHA-256 content hash. On re-install the installer uses that hash to tell its own files apart from yours:
+## Quick start
 
-- **Managed & unchanged** — silently refreshed on a version bump.
-- **User-modified** — you're prompted (or kept as-is with `--yes`, or overwritten with `--force`).
-- **Pre-existed before install** — treated as user-owned; you're prompted before we overwrite.
-- **No longer shipped by this version** — removed as an orphan if the hash still matches what we wrote, otherwise kept.
+After installing, open your repo in Claude Code or VS Code (with Copilot Chat) and run:
 
-`.github/copilot-instructions.md` is handled specially: Copilot reads only that one path, so the installer maintains a **managed region** inside the file between these markers:
+```
+/docs-init
+```
+
+This scaffolds `docs/AUTHORING.md`, `docs/TEMPLATE.md`, `docs/CHANGELOG.md`, the empty `docs/Reference/` directory, and detects your CI platform. It appends the auto-doc step to Azure Pipelines or creates `.github/workflows/auto-docs.yml` for GitHub Actions.
+
+Then configure the CI secret (the `/docs-init` output reminds you how):
+
+- **Azure Pipelines** — add a pipeline variable `COPILOT_PAT` (type: secret) with a GitHub PAT that has `repo` scope.
+- **GitHub Actions** — add a repository secret `COPILOT_PAT` with the same value.
+
+Finally, bootstrap docs for your existing code:
+
+```
+/docs-generate
+```
+
+Large projects expect multiple sessions — progress is saved in `docs/.docs-progress.json`, so each run picks up where the last left off.
+
+From here on, every commit with source-code changes triggers CI to update affected docs and append a changelog entry automatically.
+
+---
+
+## Highlights
+
+- **`/docs-init`** — scaffolds the docs folder structure and wires up CI in a single command.
+- **`/docs-generate`** — bootstraps documentation for your existing codebase. Processes components in parallel (Claude) or sequentially (Copilot), respects a per-session cap, and resumes across sessions via a persistent progress file.
+- **Auto-sync via CI** — after `/docs-init`, every commit triggers a Copilot CLI step that checks whether your doc updates cover your code changes, fills in any gaps, and appends a changelog entry. If your local AI already kept docs in sync, CI becomes a no-op.
+- **Per-file hash tracking** — the installer records a SHA-256 of every file it writes in `.github/livedocs/.manifest.json`, so re-installs refresh only what hasn't been manually edited.
+- **Managed regions** — `.github/copilot-instructions.md` uses marker comments so installer content and your own instructions can coexist in the same file.
+- **Resumable progress** — `docs/.docs-progress.json` tracks every planned component, letting large projects be documented incrementally across sessions without ever repeating work.
+
+---
+
+## How it works
+
+### Install tracking
+
+Re-running the installer on an already-set-up repo is safe. Every file written by the installer is recorded in `.github/livedocs/.manifest.json` with a SHA-256 content hash. On re-install that hash tells livedocs-managed files apart from yours:
+
+| State | Behavior |
+| --- | --- |
+| **Managed & unchanged** | Silently refreshed on a version bump. |
+| **User-modified** | Prompted (or kept as-is with `--yes`, or overwritten with `--force`). |
+| **Pre-existed before install** | Treated as user-owned; prompted before overwrite. |
+| **No longer shipped** | Removed as an orphan if the hash still matches what we wrote, otherwise kept. |
+
+### Managed region in `copilot-instructions.md`
+
+Copilot reads only one path for repo instructions. To avoid stomping on your own content, livedocs maintains a marker block inside the file:
 
 ```
 <!-- BEGIN livedocs (managed section — do not edit) -->
@@ -52,15 +107,11 @@ Re-running the installer on an already-set-up repo is safe. Every file the insta
 <!-- END livedocs -->
 ```
 
-Anything outside the markers is yours — add your own instructions around the block. On updates we only replace what's between the markers. On uninstall we strip the region and keep the rest.
+Anything outside the markers is yours. On updates only the block between the markers changes. On uninstall the block is stripped and the rest of the file is kept.
 
-The installer never touches `CLAUDE.md` or `docs/`. Claude's always-on rule lives in `.claude/rules/livedocs.md`, which Claude Code auto-loads alongside any existing `CLAUDE.md`.
+### File layout
 
-The installed version is tracked in `.github/livedocs/.version` (for humans) and `.github/livedocs/.manifest.json` (for the installer).
-
-### What gets written
-
-Relative to the repo root where you run the command:
+Relative to the repo root:
 
 ```
 .github/
@@ -85,58 +136,144 @@ Relative to the repo root where you run the command:
     └── livedocs.md                         ← always-on rule (auto-loaded)
 ```
 
-**Always-on instructions.** Both `.claude/rules/livedocs.md` and the managed region inside `.github/copilot-instructions.md` are read by the respective AI on every prompt. They tell the assistant to keep docs in sync with code whenever it edits source files, using `docs/AUTHORING.md` as the source of truth.
+**Always-on instructions.** The Claude rule in `.claude/rules/livedocs.md` and the managed region inside `.github/copilot-instructions.md` are read by the respective AI on every prompt. They tell the assistant to keep docs in sync with code whenever it edits source files, using `docs/AUTHORING.md` as the source of truth.
 
-**No CLAUDE.md collision.** The Claude rule lives under `.claude/rules/`, which Claude Code auto-loads alongside any existing `CLAUDE.md` at the repo root — so the installer never touches your own `CLAUDE.md`.
-
-**Copilot coexistence.** Copilot only reads `.github/copilot-instructions.md`, so the installer maintains its content inside the marker block described above. If the file already existed, the block is prepended and your content is preserved. On updates only the block changes. On uninstall the block is stripped and your content stays.
-
-Commit whichever of these you want teammates to use. The shared templates (`.github/livedocs/`) are read by both `/docs-init` commands at runtime — commit them too.
+**No CLAUDE.md collision.** Claude Code auto-loads every file under `.claude/rules/`, so livedocs never touches your own `CLAUDE.md`.
 
 ---
 
-## First-time use in a target repo
+## Language support
 
-After running `npx @lololomick/livedocs@latest`:
+livedocs detects the primary language(s) of your repository by probing for common project files:
 
-1. Open the repo in Claude Code or VS Code (with Copilot Chat).
+| Language | Probe files |
+| --- | --- |
+| C# / .NET | `*.csproj`, `*.sln` |
+| TypeScript | `package.json` + `tsconfig.json` |
+| JavaScript | `package.json` alone |
+| Python | `pyproject.toml`, `requirements.txt` |
+| Rust | `Cargo.toml` |
+| Go | `go.mod` |
+| Java / Kotlin | `pom.xml`, `build.gradle` |
+| Ruby | `Gemfile` |
+| PHP | `composer.json` |
+| Swift | `Package.swift` |
 
-2. Run:
-
-   ```
-   /docs-init
-   ```
-
-   This scaffolds `docs/AUTHORING.md`, `docs/TEMPLATE.md`, `docs/CHANGELOG.md`, and the empty `docs/Reference/` directory. It also detects your CI platform and adds the auto-doc step (Azure Pipelines → appends to `azure-pipelines.yml`; GitHub Actions → creates `.github/workflows/auto-docs.yml`).
-
-3. **Configure the CI secret** — the `/docs-init` output reminds you how:
-   - **Azure Pipelines:** add a pipeline variable `COPILOT_PAT` (type: secret) with a GitHub PAT that has `repo` scope.
-   - **GitHub Actions:** add a repository secret `COPILOT_PAT` with the same value.
-
-   Without this secret, the auto-doc step in CI will fail silently.
-
-4. Bootstrap documentation for the existing codebase:
-
-   ```
-   /docs-generate
-   ```
-
-   For large projects, expect multiple sessions — progress is saved in `docs/.docs-progress.json` and each run picks up where the previous left off.
-
-5. Commit the `docs/` folder (and any `.github/` changes) as a first "docs bootstrap" commit.
-
-From this point on, every commit with source-code changes triggers CI to update affected docs and append a changelog entry automatically.
+Multi-language repositories (e.g. C# backend + TypeScript frontend) are handled by documenting each tree under its own top-level folder in `docs/`.
 
 ---
 
-## Repository layout (of this plugin)
+## Style rules
+
+Full rules in `AUTHORING.md` (copied to `docs/AUTHORING.md` by `/docs-init`). The essentials:
+
+- Docs are for **humans**, not for AI. Readable prose, not type dumps.
+- **Full enumerations** — never "X, Y, etc.".
+- **Operational section headings** ("Startup sequence", "Error handling"), not structural ones ("Public API", "Dependencies").
+- **ASCII diagrams**, not Mermaid.
+- **No** `Further reading`, `History`, `TODO`, or boilerplate sections.
+- **Shared enums and codes** live in `docs/Reference/`, not duplicated across component docs.
+
+---
+
+## Updating
+
+Re-run the installer. It hashes every file against the manifest and refreshes only what's outdated:
+
+```bash
+npx @lololomick/livedocs@latest
+```
+
+Managed files you haven't touched are refreshed silently. Files you've edited trigger an interactive prompt: *overwrite all / keep all / review each / abort*. The managed region inside `.github/copilot-instructions.md` is refreshed in place — your own instructions around the block are untouched.
+
+Force-overwrite everything including user-modified files:
+
+```bash
+npx @lololomick/livedocs@latest --force
+```
+
+Preview changes without touching anything:
+
+```bash
+npx @lololomick/livedocs@latest --dry-run
+```
+
+Existing files inside `docs/` are **never** touched by the installer — they're only written by `/docs-init`, and only if they don't already exist. To pull updated templates into an already-scaffolded `docs/` folder, delete the old file and re-run `/docs-init`.
+
+---
+
+## Uninstalling
+
+```bash
+npx @lololomick/livedocs@latest uninstall
+```
+
+The uninstaller reads the manifest and only removes files whose hash still matches what it wrote. Anything you've edited is kept. Shown as a plan before confirmation.
+
+**Never removed** (you decide what to do with them):
+
+- `CLAUDE.md` — not written by the installer in the first place.
+- `docs/` — your repo's documentation.
+- Any managed file you've edited since install — surfaced in the summary so you can delete them by hand.
+
+Flags:
+
+```bash
+npx @lololomick/livedocs@latest uninstall --yes      # skip confirmation (CI scripts)
+npx @lololomick/livedocs@latest uninstall --force    # remove user-modified files too
+npx @lololomick/livedocs@latest uninstall --dry-run  # preview without removing
+```
+
+---
+
+## Troubleshooting
+
+<details>
+<summary><strong><code>/docs-init</code> says it cannot find the templates.</strong></summary>
+
+The `.github/livedocs/` folder is missing. Run `npx @lololomick/livedocs@latest` at the repo root.
+</details>
+
+<details>
+<summary><strong>The CI step fails with authentication errors.</strong></summary>
+
+Check that `COPILOT_PAT` is set in your CI secrets and has `repo` scope. The CI snippet passes it to the Copilot CLI via the `COPILOT_GITHUB_TOKEN` environment variable.
+</details>
+
+<details>
+<summary><strong>The AI is re-documenting components already marked <code>done</code>.</strong></summary>
+
+It's ignoring the progress file. This shouldn't happen with the bundled commands — make sure you're using `/docs-generate` from this plugin and not a free-form prompt.
+</details>
+
+<details>
+<summary><strong>I want to re-generate a specific doc from scratch.</strong></summary>
+
+Delete its entry from `docs/.docs-progress.json` (or set its status to `pending`) and delete the doc file. The next `/docs-generate` will regenerate it.
+</details>
+
+<details>
+<summary><strong>Copilot in VS Code does not see <code>/docs-init</code> or <code>/docs-generate</code>.</strong></summary>
+
+Make sure you ran `npx @lololomick/livedocs@latest` (or `--copilot`) and that `.github/prompts/` was created. Reload VS Code — Copilot discovers prompt files on startup.
+</details>
+
+<details>
+<summary><strong>npm error "No matching version found".</strong></summary>
+
+Try `npm cache clean --force` then re-run. This clears the local npm cache, which can fail to recognize newly published versions.
+</details>
+
+---
+
+## Repository layout
 
 ```
 livedocs/
-├── README.md                               ← you are here
+├── README.md
 ├── package.json
 ├── bin/
-│   └── install.js                          ← the `npx @lololomick/livedocs@latest` entry point
+│   └── install.js                          ← the npx entry point
 └── assets/
     ├── shared/                             ← templates deployed to .github/livedocs/
     │   ├── AUTHORING.md
@@ -151,127 +288,22 @@ livedocs/
     │   └── rules/
     │       └── livedocs.md                 ← deployed to .claude/rules/
     └── copilot/
-        ├── copilot-instructions.md         ← deployed to .github/copilot-instructions.md
+        ├── copilot-instructions.md         ← deployed (as managed region)
         └── prompts/                        ← deployed to .github/prompts/
             ├── docs-init.prompt.md
             └── docs-generate.prompt.md
 ```
 
-`assets/shared/` is the source of truth for the authoring guide and all scaffolded content. Update files there, publish a new version of this package, and users pick up the new version on the next `npx @lololomick/livedocs@latest --force`.
+`assets/shared/` is the source of truth for the authoring guide and all scaffolded content. Update files there, publish a new version, and users pick them up on the next `npx @lololomick/livedocs@latest`.
 
 ---
 
-## Language support
+## Star history
 
-The plugin detects the primary language(s) of your repository by probing for common project files (`*.csproj`, `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `pom.xml`, `Gemfile`, `composer.json`, `Package.swift`, …). See `AUTHORING.md` section 3 for the full table.
-
-Multi-language repositories (e.g. C# backend + TypeScript frontend) are handled by documenting each tree under its own top-level folder in `docs/`.
-
----
-
-## Session cap and resumable progress
-
-Documentation of a large codebase does not always fit in one AI session. The plugin handles this with:
-
-- **A persistent progress file** (`docs/.docs-progress.json`) tracking every planned component and its status (`pending`, `in_progress`, `done`).
-- **A session cap** (default: 5 components per run) that forces the agent to stop at a safe boundary.
-- **A clear stopping message** that tells the user to run `/docs-generate` again in a new chat. Progress is never lost.
-
-AI tokens are spent predictably, large projects are bootstrapped incrementally, and no work is ever repeated.
-
----
-
-## Style rules (summary)
-
-Full rules in `AUTHORING.md` (copied to `docs/AUTHORING.md` by `/docs-init`). The essentials:
-
-- Docs are for **humans**, not for AI. Readable prose, not type dumps.
-- **Full enumerations** — never "X, Y, etc.".
-- **Operational section headings** ("Startup sequence", "Error handling"), not structural ones ("Public API", "Dependencies").
-- **ASCII diagrams**, not Mermaid.
-- **No** `Further reading`, `History`, `TODO`, or boilerplate sections.
-- **Shared enums and codes** live in `docs/Reference/`, not duplicated across component docs.
-
----
-
-## Updating the plugin
-
-Just re-run the installer — it hashes every file against the manifest and refreshes only what's outdated:
-
-```
-npx @lololomick/livedocs@latest
-```
-
-Managed files that you haven't touched are refreshed silently. Files you've edited trigger an interactive prompt (keep all / overwrite all / review each / abort). The managed region inside `.github/copilot-instructions.md` is refreshed in place — your own instructions around the block are untouched.
-
-Pass `--force` to overwrite everything including user-modified files:
-
-```
-npx @lololomick/livedocs@latest --force
-```
-
-Preview changes without touching anything:
-
-```
-npx @lololomick/livedocs@latest --dry-run
-```
-
-Existing `docs/AUTHORING.md` and other files inside `docs/` are **not** touched by the installer — they are only written by `/docs-init`, and only if they do not already exist. Teams can safely refresh the plugin without losing repo-level customizations.
-
-To pull updated templates into an already-scaffolded `docs/` folder, delete the old file (`rm docs/AUTHORING.md`) and re-run `/docs-init`. Or update the file manually.
-
----
-
-
-## Uninstalling
-
-To remove livedocs from a repo:
-
-```
-npx @lololomick/livedocs@latest uninstall
-```
-
-The uninstaller reads the manifest and only removes files whose hash still matches what it wrote. Any file you've edited is kept. Shown as a plan before confirmation:
-
-- `.claude/commands/docs-init.md` and `.claude/commands/docs-generate.md`
-- `.claude/rules/livedocs.md`
-- `.github/prompts/docs-init.prompt.md` and `.github/prompts/docs-generate.prompt.md`
-- `.github/livedocs/` (the whole folder, including the manifest)
-- The managed region inside `.github/copilot-instructions.md` — stripped; any content you added around it is kept. If the file ends up empty, it's removed too.
-- Any parent directories that become empty (e.g. `.claude/`)
-
-**Never removed** (you decide what to do with them):
-
-- `CLAUDE.md` — not written by the installer in the first place
-- `docs/` — your repo's documentation
-- Any managed file you've edited since install — shown in the summary so you can delete them by hand
-
-Flags:
-
-```
-npx @lololomick/livedocs@latest uninstall --yes      # skip confirmation (CI scripts)
-npx @lololomick/livedocs@latest uninstall --force    # remove user-modified files too
-npx @lololomick/livedocs@latest uninstall --dry-run  # preview without removing
-```
-
----
-
-## Troubleshooting
-
-**`/docs-init` says it cannot find the templates.**
-The `.github/livedocs/` folder is missing. Run `npx @lololomick/livedocs@latest` at the repo root.
-
-**The CI step fails with authentication errors.**
-Check that `COPILOT_PAT` is set in your CI secrets and has `repo` scope. The CI snippet passes it to the Copilot CLI via the `COPILOT_GITHUB_TOKEN` environment variable.
-
-**The AI is re-documenting components already marked `done`.**
-It is ignoring the progress file. This should not happen with the bundled commands — if it does, make sure you are using `/docs-generate` from this plugin and not a free-form prompt.
-
-**I want to re-generate a specific doc from scratch.**
-Delete its entry from `docs/.docs-progress.json` (or set its status to `pending`) and delete the doc file. The next `/docs-generate` will regenerate it.
-
-**Copilot in VS Code does not see the `/docs-init` or `/docs-generate` commands.**
-Make sure you ran `npx @lololomick/livedocs@latest` (or `npx @lololomick/livedocs@latest --copilot`) and that `.github/prompts/` was created. Reload VS Code — Copilot discovers prompt files on startup.
-
-**npm error "No matching version found"**
-Try running `npm cache clean --force` then re-running the install command. This clears the local npm cache, which can get into a bad state and fail to recognize newly published versions.
+<a href="https://www.star-history.com/#lololomick/livedocs&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=lololomick/livedocs&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=lololomick/livedocs&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=lololomick/livedocs&type=Date" />
+ </picture>
+</a>
