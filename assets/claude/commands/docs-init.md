@@ -6,7 +6,7 @@ description: Scaffold the docs/ directory, authoring guide, template, changelog,
 
 You are setting up automated documentation for this repository. This is a ONE-TIME initialization — it scaffolds the files the documentation pipeline and future `/docs-generate` runs depend on.
 
-The bundled templates live at `.github/kse-autodocs/` in this repository (placed there by the `npx kse-autodocs` installer). Use the Read tool to access them; use the Write tool to deploy them into `docs/`.
+The bundled templates live at `.github/livedocs/` in this repository (placed there by the `npx @lololomick/livedocs` installer). Use the Read tool to access them; use the Write tool to deploy them into `docs/`.
 
 ## Step 1 — Detect existing state
 
@@ -27,7 +27,7 @@ Detect the CI platform:
 
 Detect primary language(s) of the repository (see `AUTHORING.md` section 3 for the detection table once scaffolded).
 
-If `.github/kse-autodocs/` does not exist, tell the user to run `npx kse-autodocs` at the repo root first. Then stop.
+If `.github/livedocs/` does not exist, tell the user to run `npx @lololomick/livedocs` at the repo root first. Then stop.
 
 ## Step 2 — Scaffold missing files
 
@@ -35,9 +35,9 @@ For each missing file, read the bundled template and write it to the user's repo
 
 | Source | Destination |
 | --- | --- |
-| `.github/kse-autodocs/AUTHORING.md` | `docs/AUTHORING.md` |
-| `.github/kse-autodocs/TEMPLATE.md` | `docs/TEMPLATE.md` |
-| `.github/kse-autodocs/CHANGELOG.md` | `docs/CHANGELOG.md` |
+| `.github/livedocs/AUTHORING.md` | `docs/AUTHORING.md` |
+| `.github/livedocs/TEMPLATE.md` | `docs/TEMPLATE.md` |
+| `.github/livedocs/CHANGELOG.md` | `docs/CHANGELOG.md` |
 
 Also create the empty directory `docs/Reference/`.
 
@@ -47,14 +47,14 @@ Also create the empty directory `docs/Reference/`.
 
 1. Open the existing `azure-pipelines.yml`.
 2. Check for an existing step whose `displayName` contains `Auto-update documentation`. If present, skip.
-3. If absent, append the content of `.github/kse-autodocs/pipeline-snippet.azure-pipelines.yml` to the existing `steps:` section, before any artifact-publishing steps.
+3. If absent, append the content of `.github/livedocs/pipeline-snippet.azure-pipelines.yml` to the existing `steps:` section, before any artifact-publishing steps.
 4. Do not touch unrelated steps.
 5. Tell the user you modified `azure-pipelines.yml` and suggest they review the diff.
 
 ### If GitHub Actions
 
 1. Check whether `.github/workflows/auto-docs.yml` already exists. If so, skip.
-2. If not, copy `.github/kse-autodocs/pipeline-snippet.github-actions.yml` to `.github/workflows/auto-docs.yml`.
+2. If not, copy `.github/livedocs/pipeline-snippet.github-actions.yml` to `.github/workflows/auto-docs.yml`.
 3. Tell the user a new workflow was created.
 
 ### If GitLab CI

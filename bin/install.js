@@ -10,12 +10,12 @@ const MANIFEST_SCHEMA = 1;
 
 const ASSETS = path.join(__dirname, '..', 'assets');
 const CWD = process.cwd();
-const KSE_DIR = path.join(CWD, '.github', 'kse-autodocs');
-const MANIFEST_PATH = path.join(KSE_DIR, '.manifest.json');
-const VERSION_PATH = path.join(KSE_DIR, '.version');
+const LIVEDOCS_DIR = path.join(CWD, '.github', 'livedocs');
+const MANIFEST_PATH = path.join(LIVEDOCS_DIR, '.manifest.json');
+const VERSION_PATH = path.join(LIVEDOCS_DIR, '.version');
 
-const REGION_BEGIN = '<!-- BEGIN kse-autodocs (managed section — do not edit) -->';
-const REGION_END = '<!-- END kse-autodocs -->';
+const REGION_BEGIN = '<!-- BEGIN livedocs (managed section — do not edit) -->';
+const REGION_END = '<!-- END livedocs -->';
 
 // --- CLI args ------------------------------------------------------------
 
@@ -44,21 +44,21 @@ const col = {
 };
 
 const BANNER = `
-${col.cyan}██   ██ ███████ ███████${col.reset}
-${col.cyan}██  ██  ██      ██     ${col.reset}
-${col.cyan}█████   ███████ █████  ${col.reset}
-${col.cyan}██  ██       ██ ██     ${col.reset}
-${col.cyan}██   ██ ███████ ███████${col.reset}
-${col.bold}kse-autodocs${col.reset} ${col.dim}v${CURRENT_VERSION}  ·  living docs for Claude Code + Copilot${col.reset}
+${col.cyan}██      ██ ██    ██ ███████ ██████   ██████   ██████ ███████${col.reset}
+${col.cyan}██      ██ ██    ██ ██      ██   ██ ██    ██ ██      ██     ${col.reset}
+${col.cyan}██      ██ ██    ██ █████   ██   ██ ██    ██ ██      ███████${col.reset}
+${col.cyan}██      ██  ██  ██  ██      ██   ██ ██    ██ ██           ██${col.reset}
+${col.cyan}███████ ██   ████   ███████ ██████   ██████   ██████ ███████${col.reset}
+${col.bold}livedocs${col.reset} ${col.dim}v${CURRENT_VERSION}  ·  living documentation for Claude Code + Copilot${col.reset}
 `;
 
 const HELP = `
-kse-autodocs v${CURRENT_VERSION} — install Claude Code commands and / or GitHub
+livedocs v${CURRENT_VERSION} — install Claude Code commands and / or GitHub
 Copilot prompts for scaffolding and maintaining developer documentation.
 
 Usage:
-  npx kse-autodocs [options]           install into current repo (default)
-  npx kse-autodocs uninstall [options] remove kse-autodocs files from repo
+  npx @lololomick/livedocs [options]           install into current repo (default)
+  npx @lololomick/livedocs uninstall [options] remove livedocs files from repo
 
 Options:
   --claude       Install Claude Code integration only
@@ -72,7 +72,7 @@ Options:
 
 Install tracking:
   Every file written by the installer is recorded in
-  .github/kse-autodocs/.manifest.json with a SHA-256 content hash.
+  .github/livedocs/.manifest.json with a SHA-256 content hash.
   On re-install the installer uses that hash to decide:
     · managed & unchanged   → updated silently on version bump
     · user-modified         → prompted (or skipped with --yes)
@@ -174,8 +174,8 @@ function buildAssetPlan(targets) {
   walkDir(path.join(ASSETS, 'shared'), (srcAbs, rel) => {
     items.push({
       src: srcAbs,
-      dest: path.join(KSE_DIR, rel),
-      relDest: path.relative(CWD, path.join(KSE_DIR, rel)),
+      dest: path.join(LIVEDOCS_DIR, rel),
+      relDest: path.relative(CWD, path.join(LIVEDOCS_DIR, rel)),
       kind: 'managed',
       group: 'shared',
     });
@@ -192,9 +192,9 @@ function buildAssetPlan(targets) {
       });
     });
     items.push({
-      src: path.join(ASSETS, 'claude', 'rules', 'kse-autodocs.md'),
-      dest: path.join(CWD, '.claude', 'rules', 'kse-autodocs.md'),
-      relDest: path.join('.claude', 'rules', 'kse-autodocs.md'),
+      src: path.join(ASSETS, 'claude', 'rules', 'livedocs.md'),
+      dest: path.join(CWD, '.claude', 'rules', 'livedocs.md'),
+      relDest: path.join('.claude', 'rules', 'livedocs.md'),
       kind: 'managed',
       group: 'claude',
     });
@@ -237,7 +237,7 @@ function buildRegionContent(existing, incoming) {
   const idxEnd = existing.indexOf(REGION_END);
 
   if (idxBegin === -1 || idxEnd === -1 || idxEnd < idxBegin) {
-    // No markers. If the entire disk file is our shipped content (e.g. a v0.4.x
+    // No markers. If the entire disk file is our shipped content (e.g. a legacy
     // install that copied the asset verbatim), replace it with the wrapped
     // version so no duplicate content appears after migration.
     if (existing.replace(/\s+$/, '') === body) {
@@ -315,8 +315,8 @@ function migrateFromVersionFile() {
     }
   }
 
-  // Pick up a known-obsolete file from v0.4.x so orphan detection can remove it.
-  const obsoleteSnippet = '.github/kse-autodocs/copilot-instructions-snippet.md';
+  // Pick up a known-obsolete file from legacy installs so orphan detection can remove it.
+  const obsoleteSnippet = '.github/livedocs/copilot-instructions-snippet.md';
   const obsoleteAbs = path.join(CWD, obsoleteSnippet);
   if (fs.existsSync(obsoleteAbs)) {
     const srcAbs = path.join(ASSETS, 'copilot', 'copilot-instructions.md');
@@ -685,7 +685,7 @@ async function runInstall() {
     manifest = migrateFromVersionFile();
     if (manifest) {
       migrated = true;
-      console.log(`${col.yellow}▲${col.reset} Migrating a pre-0.5 install (hashing existing files into the new manifest)\n`);
+      console.log(`${col.yellow}▲${col.reset} Migrating legacy install state into the manifest format\n`);
     } else {
       manifest = emptyManifest();
     }
@@ -734,7 +734,7 @@ async function runInstall() {
   const stats = { written: 0, updated: 0, skipped: 0, removed: 0 };
   const groupTitle = { shared: 'Shared templates', claude: 'Claude Code', copilot: 'GitHub Copilot' };
   const groupDest = {
-    shared: '.github/kse-autodocs/',
+    shared: '.github/livedocs/',
     claude: '.claude/',
     copilot: '.github/',
   };
@@ -785,7 +785,7 @@ async function runInstall() {
   const bar = '━'.repeat(56);
   console.log(`\n${col.cyan}${bar}${col.reset}`);
   console.log(
-    `${col.green}✓${col.reset} kse-autodocs ${col.bold}v${CURRENT_VERSION}${col.reset} installed  ` +
+    `${col.green}✓${col.reset} livedocs ${col.bold}v${CURRENT_VERSION}${col.reset} installed  ` +
       `${col.dim}(${stats.written} new, ${stats.updated} updated, ${stats.skipped} skipped, ${stats.removed} removed)${col.reset}`
   );
   console.log(`${col.cyan}${bar}${col.reset}\n`);
@@ -808,11 +808,11 @@ async function runUninstall() {
   let manifest = loadManifest();
   if (!manifest) {
     manifest = migrateFromVersionFile();
-    if (manifest) console.log(`${col.yellow}▲${col.reset} Reading pre-0.5 install state\n`);
+    if (manifest) console.log(`${col.yellow}▲${col.reset} Reading legacy install state\n`);
   }
 
   if (!manifest || Object.keys(manifest.files).length === 0) {
-    console.log(`${col.dim}Nothing to uninstall — no kse-autodocs manifest found in ${CWD}${col.reset}`);
+    console.log(`${col.dim}Nothing to uninstall — no livedocs manifest found in ${CWD}${col.reset}`);
     return;
   }
 
@@ -925,8 +925,8 @@ async function runUninstall() {
 
   const remainingManaged = Object.keys(manifest.files).length;
   if (remainingManaged === 0) {
-    try { fs.rmSync(KSE_DIR, { recursive: true, force: true }); } catch {}
-    console.log(`  ${col.dim}✗ .github/kse-autodocs/ (manifest + templates removed)${col.reset}`);
+    try { fs.rmSync(LIVEDOCS_DIR, { recursive: true, force: true }); } catch {}
+    console.log(`  ${col.dim}✗ .github/livedocs/ (manifest + templates removed)${col.reset}`);
   } else {
     saveManifest(manifest);
   }
@@ -941,7 +941,7 @@ async function runUninstall() {
 
   const bar = '━'.repeat(56);
   console.log(`\n${col.cyan}${bar}${col.reset}`);
-  console.log(`${col.green}✓${col.reset} kse-autodocs uninstalled  ${col.dim}(${removed} removed, ${willKeep.length} kept)${col.reset}`);
+  console.log(`${col.green}✓${col.reset} livedocs uninstalled  ${col.dim}(${removed} removed, ${willKeep.length} kept)${col.reset}`);
   console.log(`${col.cyan}${bar}${col.reset}\n`);
 
   if (willKeep.length > 0) {
@@ -960,7 +960,7 @@ async function run() {
     await runInstall();
   } else {
     console.error(`${col.red}Unknown command:${col.reset} ${subcommand}`);
-    console.error(`Run ${col.cyan}npx kse-autodocs --help${col.reset} for usage.`);
+    console.error(`Run ${col.cyan}npx @lololomick/livedocs --help${col.reset} for usage.`);
     process.exit(1);
   }
 }

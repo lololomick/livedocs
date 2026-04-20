@@ -1,9 +1,9 @@
 {
-  "name": "kse-autodocs",
-  "version": "0.5.0",
-  "description": "Scaffold and maintain developer documentation in a consistent, human-readable style. Installs commands for Claude Code and / or GitHub Copilot.",
+  "name": "@lololomick/livedocs",
+  "version": "0.5.1",
+  "description": "Scaffold and maintain living developer documentation in a consistent, human-readable style. Installs slash commands for Claude Code and / or GitHub Copilot.",
   "bin": {
-    "kse-autodocs": "bin/install.js"
+    "livedocs": "bin/install.js"
   },
   "files": [
     "bin",
@@ -14,10 +14,23 @@
     "docs",
     "changelog",
     "claude",
-    "copilot"
+    "copilot",
+    "livedocs",
+    "ai"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lololomick/livedocs.git"
+  },
+  "homepage": "https://github.com/lololomick/livedocs#readme",
+  "bugs": {
+    "url": "https://github.com/lololomick/livedocs/issues"
+  },
   "engines": {
     "node": ">=18"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }

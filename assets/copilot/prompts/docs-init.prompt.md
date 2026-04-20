@@ -29,19 +29,19 @@ Detect primary language(s) of the repository by probing for:
 
 ## Step 2 — Scaffold missing files
 
-The bundled templates are located at `.github/kse-autodocs/` in this repository (placed there by the `npx kse-autodocs` installer).
+The bundled templates are located at `.github/livedocs/` in this repository (placed there by the `npx @lololomick/livedocs` installer).
 
 For each missing file, copy the corresponding template into the user's `docs/` directory:
 
 | Source | Destination |
 | --- | --- |
-| `.github/kse-autodocs/AUTHORING.md` | `docs/AUTHORING.md` |
-| `.github/kse-autodocs/TEMPLATE.md` | `docs/TEMPLATE.md` |
-| `.github/kse-autodocs/CHANGELOG.md` | `docs/CHANGELOG.md` |
+| `.github/livedocs/AUTHORING.md` | `docs/AUTHORING.md` |
+| `.github/livedocs/TEMPLATE.md` | `docs/TEMPLATE.md` |
+| `.github/livedocs/CHANGELOG.md` | `docs/CHANGELOG.md` |
 
 Also create the empty directory `docs/Reference/`.
 
-If `.github/kse-autodocs/` does not exist, tell the user to run `npx kse-autodocs` at the repo root first. Then stop.
+If `.github/livedocs/` does not exist, tell the user to run `npx @lololomick/livedocs` at the repo root first. Then stop.
 
 Never overwrite an existing file. Skip any that already exist.
 
@@ -51,13 +51,13 @@ Never overwrite an existing file. Skip any that already exist.
 
 1. Open `azure-pipelines.yml`.
 2. Check for an existing step whose `displayName` contains `Auto-update documentation`. If present, skip.
-3. If absent, append the content of `.github/kse-autodocs/pipeline-snippet.azure-pipelines.yml` to the `steps:` section, before any artifact-publishing steps.
+3. If absent, append the content of `.github/livedocs/pipeline-snippet.azure-pipelines.yml` to the `steps:` section, before any artifact-publishing steps.
 4. Do not touch unrelated steps.
 
 ### GitHub Actions
 
 1. Check whether `.github/workflows/auto-docs.yml` exists. If so, skip.
-2. If not, copy `.github/kse-autodocs/pipeline-snippet.github-actions.yml` to `.github/workflows/auto-docs.yml`.
+2. If not, copy `.github/livedocs/pipeline-snippet.github-actions.yml` to `.github/workflows/auto-docs.yml`.
 
 ### GitLab CI
 

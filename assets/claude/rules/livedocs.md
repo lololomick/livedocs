@@ -1,6 +1,6 @@
-# Documentation discipline (kse-autodocs)
+# Documentation discipline (livedocs)
 
-This repository uses `kse-autodocs` for living documentation under `docs/`. Every code change should ship with the corresponding doc update — do not leave that to the CI pipeline if you can do it while you have full context.
+This repository uses `livedocs` for living documentation under `docs/`. Every code change should ship with the corresponding doc update — do not leave that to the CI pipeline if you can do it while you have full context.
 
 ## When you edit source code
 

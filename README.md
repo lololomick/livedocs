@@ -1,6 +1,6 @@
-# kse-autodocs
+# livedocs
 
-Scaffolds and maintains developer documentation in a consistent, human-readable style. Installs slash commands for **Claude Code** and / or **GitHub Copilot** into your repo with a single command — no Claude Code required to install, no configuration files to edit. Language-agnostic: works with C#, TypeScript/JavaScript, Python, Rust, Go, Java, and more.
+Scaffolds and maintains living developer documentation in a consistent, human-readable style. Installs slash commands for **Claude Code** and / or **GitHub Copilot** into your repo with a single command — no Claude Code required to install, no configuration files to edit. Language-agnostic: works with C#, TypeScript/JavaScript, Python, Rust, Go, Java, and more.
 
 ## What you get
 
@@ -18,7 +18,7 @@ After `/docs-init` has been run and CI is configured, documentation keeps itself
 Run one command inside your repo:
 
 ```
-npx kse-autodocs@latest
+npx @lololomick/livedocs@latest
 ```
 
 You'll be asked whether to install the Claude integration, the Copilot integration, or both (default). That's it — no Claude Code, no global setup, no plugin marketplace.
@@ -28,16 +28,16 @@ If you have trouble with the interactive prompt, you can use flags to specify yo
 ### Flags
 
 ```
-npx kse-autodocs@latest --both      # install both (same as the interactive default)
-npx kse-autodocs@latest --claude    # install Claude Code commands only
-npx kse-autodocs@latest --copilot   # install Copilot prompts only
-npx kse-autodocs@latest --yes       # non-interactive; managed files refresh, user-modified files skip
-npx kse-autodocs@latest --force     # overwrite every file, including user-modified ones
-npx kse-autodocs@latest --dry-run   # show what would change without touching any files
-npx kse-autodocs@latest --help      # full help
+npx @lololomick/livedocs@latest --both      # install both (same as the interactive default)
+npx @lololomick/livedocs@latest --claude    # install Claude Code commands only
+npx @lololomick/livedocs@latest --copilot   # install Copilot prompts only
+npx @lololomick/livedocs@latest --yes       # non-interactive; managed files refresh, user-modified files skip
+npx @lololomick/livedocs@latest --force     # overwrite every file, including user-modified ones
+npx @lololomick/livedocs@latest --dry-run   # show what would change without touching any files
+npx @lololomick/livedocs@latest --help      # full help
 ```
 
-Re-running the installer on an already-set-up repo is safe. Every file the installer writes is recorded in `.github/kse-autodocs/.manifest.json` with a SHA-256 content hash. On re-install the installer uses that hash to tell our files apart from yours:
+Re-running the installer on an already-set-up repo is safe. Every file the installer writes is recorded in `.github/livedocs/.manifest.json` with a SHA-256 content hash. On re-install the installer uses that hash to tell its own files apart from yours:
 
 - **Managed & unchanged** — silently refreshed on a version bump.
 - **User-modified** — you're prompted (or kept as-is with `--yes`, or overwritten with `--force`).
@@ -47,16 +47,16 @@ Re-running the installer on an already-set-up repo is safe. Every file the insta
 `.github/copilot-instructions.md` is handled specially: Copilot reads only that one path, so the installer maintains a **managed region** inside the file between these markers:
 
 ```
-<!-- BEGIN kse-autodocs (managed section — do not edit) -->
+<!-- BEGIN livedocs (managed section — do not edit) -->
 (installer content)
-<!-- END kse-autodocs -->
+<!-- END livedocs -->
 ```
 
 Anything outside the markers is yours — add your own instructions around the block. On updates we only replace what's between the markers. On uninstall we strip the region and keep the rest.
 
-The installer never touches `CLAUDE.md` or `docs/`. Claude's always-on rule lives in `.claude/rules/kse-autodocs.md`, which Claude Code auto-loads alongside any existing `CLAUDE.md`.
+The installer never touches `CLAUDE.md` or `docs/`. Claude's always-on rule lives in `.claude/rules/livedocs.md`, which Claude Code auto-loads alongside any existing `CLAUDE.md`.
 
-The installed version is tracked in `.github/kse-autodocs/.version` (for humans) and `.github/kse-autodocs/.manifest.json` (for the installer).
+The installed version is tracked in `.github/livedocs/.version` (for humans) and `.github/livedocs/.manifest.json` (for the installer).
 
 ### What gets written
 
@@ -64,7 +64,7 @@ Relative to the repo root where you run the command:
 
 ```
 .github/
-├── kse-autodocs/                           ← shared templates + install manifest
+├── livedocs/                               ← shared templates + install manifest
 │   ├── .manifest.json                      ← per-file hashes (installer bookkeeping)
 │   ├── .version                            ← plugin version (human-readable)
 │   ├── AUTHORING.md
@@ -82,22 +82,22 @@ Relative to the repo root where you run the command:
 │   ├── docs-init.md
 │   └── docs-generate.md
 └── rules/                                  ← if Claude selected
-    └── kse-autodocs.md                     ← always-on rule (auto-loaded)
+    └── livedocs.md                         ← always-on rule (auto-loaded)
 ```
 
-**Always-on instructions.** Both `.claude/rules/kse-autodocs.md` and the managed region inside `.github/copilot-instructions.md` are read by the respective AI on every prompt. They tell the assistant to keep docs in sync with code whenever it edits source files, using `docs/AUTHORING.md` as the source of truth.
+**Always-on instructions.** Both `.claude/rules/livedocs.md` and the managed region inside `.github/copilot-instructions.md` are read by the respective AI on every prompt. They tell the assistant to keep docs in sync with code whenever it edits source files, using `docs/AUTHORING.md` as the source of truth.
 
 **No CLAUDE.md collision.** The Claude rule lives under `.claude/rules/`, which Claude Code auto-loads alongside any existing `CLAUDE.md` at the repo root — so the installer never touches your own `CLAUDE.md`.
 
 **Copilot coexistence.** Copilot only reads `.github/copilot-instructions.md`, so the installer maintains its content inside the marker block described above. If the file already existed, the block is prepended and your content is preserved. On updates only the block changes. On uninstall the block is stripped and your content stays.
 
-Commit whichever of these you want teammates to use. The shared templates (`.github/kse-autodocs/`) are read by both `/docs-init` commands at runtime — commit them too.
+Commit whichever of these you want teammates to use. The shared templates (`.github/livedocs/`) are read by both `/docs-init` commands at runtime — commit them too.
 
 ---
 
 ## First-time use in a target repo
 
-After running `npx kse-autodocs@latest`:
+After running `npx @lololomick/livedocs@latest`:
 
 1. Open the repo in Claude Code or VS Code (with Copilot Chat).
 
@@ -132,13 +132,13 @@ From this point on, every commit with source-code changes triggers CI to update 
 ## Repository layout (of this plugin)
 
 ```
-kse-autodocs/
+livedocs/
 ├── README.md                               ← you are here
 ├── package.json
 ├── bin/
-│   └── install.js                          ← the `npx kse-autodocs@latest` entry point
+│   └── install.js                          ← the `npx @lololomick/livedocs@latest` entry point
 └── assets/
-    ├── shared/                             ← templates deployed to .github/kse-autodocs/
+    ├── shared/                             ← templates deployed to .github/livedocs/
     │   ├── AUTHORING.md
     │   ├── TEMPLATE.md
     │   ├── CHANGELOG.md
@@ -149,7 +149,7 @@ kse-autodocs/
     │   │   ├── docs-init.md
     │   │   └── docs-generate.md
     │   └── rules/
-    │       └── kse-autodocs.md             ← deployed to .claude/rules/
+    │       └── livedocs.md                 ← deployed to .claude/rules/
     └── copilot/
         ├── copilot-instructions.md         ← deployed to .github/copilot-instructions.md
         └── prompts/                        ← deployed to .github/prompts/
@@ -157,7 +157,7 @@ kse-autodocs/
             └── docs-generate.prompt.md
 ```
 
-`assets/shared/` is the source of truth for the authoring guide and all scaffolded content. Update files there, publish a new version of this package, and users pick up the new version on the next `npx kse-autodocs@latest --force`.
+`assets/shared/` is the source of truth for the authoring guide and all scaffolded content. Update files there, publish a new version of this package, and users pick up the new version on the next `npx @lololomick/livedocs@latest --force`.
 
 ---
 
@@ -199,7 +199,7 @@ Full rules in `AUTHORING.md` (copied to `docs/AUTHORING.md` by `/docs-init`). Th
 Just re-run the installer — it hashes every file against the manifest and refreshes only what's outdated:
 
 ```
-npx kse-autodocs@latest
+npx @lololomick/livedocs@latest
 ```
 
 Managed files that you haven't touched are refreshed silently. Files you've edited trigger an interactive prompt (keep all / overwrite all / review each / abort). The managed region inside `.github/copilot-instructions.md` is refreshed in place — your own instructions around the block are untouched.
@@ -207,13 +207,13 @@ Managed files that you haven't touched are refreshed silently. Files you've edit
 Pass `--force` to overwrite everything including user-modified files:
 
 ```
-npx kse-autodocs@latest --force
+npx @lololomick/livedocs@latest --force
 ```
 
 Preview changes without touching anything:
 
 ```
-npx kse-autodocs@latest --dry-run
+npx @lololomick/livedocs@latest --dry-run
 ```
 
 Existing `docs/AUTHORING.md` and other files inside `docs/` are **not** touched by the installer — they are only written by `/docs-init`, and only if they do not already exist. Teams can safely refresh the plugin without losing repo-level customizations.
@@ -225,18 +225,18 @@ To pull updated templates into an already-scaffolded `docs/` folder, delete the 
 
 ## Uninstalling
 
-To remove kse-autodocs from a repo:
+To remove livedocs from a repo:
 
 ```
-npx kse-autodocs@latest uninstall
+npx @lololomick/livedocs@latest uninstall
 ```
 
 The uninstaller reads the manifest and only removes files whose hash still matches what it wrote. Any file you've edited is kept. Shown as a plan before confirmation:
 
 - `.claude/commands/docs-init.md` and `.claude/commands/docs-generate.md`
-- `.claude/rules/kse-autodocs.md`
+- `.claude/rules/livedocs.md`
 - `.github/prompts/docs-init.prompt.md` and `.github/prompts/docs-generate.prompt.md`
-- `.github/kse-autodocs/` (the whole folder, including the manifest)
+- `.github/livedocs/` (the whole folder, including the manifest)
 - The managed region inside `.github/copilot-instructions.md` — stripped; any content you added around it is kept. If the file ends up empty, it's removed too.
 - Any parent directories that become empty (e.g. `.claude/`)
 
@@ -249,9 +249,9 @@ The uninstaller reads the manifest and only removes files whose hash still match
 Flags:
 
 ```
-npx kse-autodocs@latest uninstall --yes      # skip confirmation (CI scripts)
-npx kse-autodocs@latest uninstall --force    # remove user-modified files too
-npx kse-autodocs@latest uninstall --dry-run  # preview without removing
+npx @lololomick/livedocs@latest uninstall --yes      # skip confirmation (CI scripts)
+npx @lololomick/livedocs@latest uninstall --force    # remove user-modified files too
+npx @lololomick/livedocs@latest uninstall --dry-run  # preview without removing
 ```
 
 ---
@@ -259,7 +259,7 @@ npx kse-autodocs@latest uninstall --dry-run  # preview without removing
 ## Troubleshooting
 
 **`/docs-init` says it cannot find the templates.**
-The `.github/kse-autodocs/` folder is missing. Run `npx kse-autodocs@latest` at the repo root.
+The `.github/livedocs/` folder is missing. Run `npx @lololomick/livedocs@latest` at the repo root.
 
 **The CI step fails with authentication errors.**
 Check that `COPILOT_PAT` is set in your CI secrets and has `repo` scope. The CI snippet passes it to the Copilot CLI via the `COPILOT_GITHUB_TOKEN` environment variable.
@@ -271,7 +271,7 @@ It is ignoring the progress file. This should not happen with the bundled comman
 Delete its entry from `docs/.docs-progress.json` (or set its status to `pending`) and delete the doc file. The next `/docs-generate` will regenerate it.
 
 **Copilot in VS Code does not see the `/docs-init` or `/docs-generate` commands.**
-Make sure you ran `npx kse-autodocs@latest` (or `npx kse-autodocs@latest --copilot`) and that `.github/prompts/` was created. Reload VS Code — Copilot discovers prompt files on startup.
+Make sure you ran `npx @lololomick/livedocs@latest` (or `npx @lololomick/livedocs@latest --copilot`) and that `.github/prompts/` was created. Reload VS Code — Copilot discovers prompt files on startup.
 
 **npm error "No matching version found"**
 Try running `npm cache clean --force` then re-running the install command. This clears the local npm cache, which can get into a bad state and fail to recognize newly published versions.
