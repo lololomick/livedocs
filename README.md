@@ -31,20 +31,32 @@ If you have trouble with the interactive prompt, you can use flags to specify yo
 npx kse-autodocs@latest --both      # install both (same as the interactive default)
 npx kse-autodocs@latest --claude    # install Claude Code commands only
 npx kse-autodocs@latest --copilot   # install Copilot prompts only
-npx kse-autodocs@latest --yes       # skip the prompt, install both
-npx kse-autodocs@latest --force     # overwrite files that already exist
+npx kse-autodocs@latest --yes       # non-interactive; managed files refresh, user-modified files skip
+npx kse-autodocs@latest --force     # overwrite every file, including user-modified ones
+npx kse-autodocs@latest --dry-run   # show what would change without touching any files
 npx kse-autodocs@latest --help      # full help
 ```
 
-Re-running the installer on an already-set-up repo is safe:
+Re-running the installer on an already-set-up repo is safe. Every file the installer writes is recorded in `.github/kse-autodocs/.manifest.json` with a SHA-256 content hash. On re-install the installer uses that hash to tell our files apart from yours:
 
-- If the installed version matches what's in the package, all files are left alone.
-- If the package version is **newer** than what's in the repo, "library" files (shared templates, slash commands, Claude rule, Copilot prompts) are auto-refreshed to the new version.
-- One file is treated as **user-owned** and never auto-overwritten: `.github/copilot-instructions.md`. On an upgrade the installer leaves it alone and drops a fresh reference at `.github/kse-autodocs/copilot-instructions-snippet.md` so you can merge changes manually.
-- The installer never touches `CLAUDE.md` or `docs/` at all — Claude's always-on rule lives in `.claude/rules/kse-autodocs.md`, which Claude Code auto-loads alongside any existing `CLAUDE.md`.
-- `--force` overwrites everything including user-owned files. Use sparingly.
+- **Managed & unchanged** — silently refreshed on a version bump.
+- **User-modified** — you're prompted (or kept as-is with `--yes`, or overwritten with `--force`).
+- **Pre-existed before install** — treated as user-owned; you're prompted before we overwrite.
+- **No longer shipped by this version** — removed as an orphan if the hash still matches what we wrote, otherwise kept.
 
-The installed version is tracked in `.github/kse-autodocs/.version`.
+`.github/copilot-instructions.md` is handled specially: Copilot reads only that one path, so the installer maintains a **managed region** inside the file between these markers:
+
+```
+<!-- BEGIN kse-autodocs (managed section — do not edit) -->
+(installer content)
+<!-- END kse-autodocs -->
+```
+
+Anything outside the markers is yours — add your own instructions around the block. On updates we only replace what's between the markers. On uninstall we strip the region and keep the rest.
+
+The installer never touches `CLAUDE.md` or `docs/`. Claude's always-on rule lives in `.claude/rules/kse-autodocs.md`, which Claude Code auto-loads alongside any existing `CLAUDE.md`.
+
+The installed version is tracked in `.github/kse-autodocs/.version` (for humans) and `.github/kse-autodocs/.manifest.json` (for the installer).
 
 ### What gets written
 
@@ -52,14 +64,15 @@ Relative to the repo root where you run the command:
 
 ```
 .github/
-├── kse-autodocs/                           ← shared templates (always)
+├── kse-autodocs/                           ← shared templates + install manifest
+│   ├── .manifest.json                      ← per-file hashes (installer bookkeeping)
+│   ├── .version                            ← plugin version (human-readable)
 │   ├── AUTHORING.md
 │   ├── TEMPLATE.md
 │   ├── CHANGELOG.md
 │   ├── pipeline-snippet.azure-pipelines.yml
-│   ├── pipeline-snippet.github-actions.yml
-│   └── copilot-instructions-snippet.md     ← reference copy for merging
-├── copilot-instructions.md                 ← if Copilot selected (user-owned)
+│   └── pipeline-snippet.github-actions.yml
+├── copilot-instructions.md                 ← if Copilot selected (user-owned, managed region inside)
 └── prompts/                                ← if Copilot selected
     ├── docs-init.prompt.md
     └── docs-generate.prompt.md
@@ -72,11 +85,11 @@ Relative to the repo root where you run the command:
     └── kse-autodocs.md                     ← always-on rule (auto-loaded)
 ```
 
-**Always-on instructions.** Both `.claude/rules/kse-autodocs.md` and `.github/copilot-instructions.md` are read by the respective AI on every prompt. They tell the assistant to keep docs in sync with code whenever it edits source files, using `docs/AUTHORING.md` as the source of truth.
+**Always-on instructions.** Both `.claude/rules/kse-autodocs.md` and the managed region inside `.github/copilot-instructions.md` are read by the respective AI on every prompt. They tell the assistant to keep docs in sync with code whenever it edits source files, using `docs/AUTHORING.md` as the source of truth.
 
 **No CLAUDE.md collision.** The Claude rule lives under `.claude/rules/`, which Claude Code auto-loads alongside any existing `CLAUDE.md` at the repo root — so the installer never touches your own `CLAUDE.md`.
 
-**Copilot collision handling.** Copilot only reads `.github/copilot-instructions.md`, so if you already have one the installer skips it and drops a fresh reference at `.github/kse-autodocs/copilot-instructions-snippet.md` for manual merging.
+**Copilot coexistence.** Copilot only reads `.github/copilot-instructions.md`, so the installer maintains its content inside the marker block described above. If the file already existed, the block is prepended and your content is preserved. On updates only the block changes. On uninstall the block is stripped and your content stays.
 
 Commit whichever of these you want teammates to use. The shared templates (`.github/kse-autodocs/`) are read by both `/docs-init` commands at runtime — commit them too.
 
@@ -183,18 +196,24 @@ Full rules in `AUTHORING.md` (copied to `docs/AUTHORING.md` by `/docs-init`). Th
 
 ## Updating the plugin
 
-Just re-run the installer — it auto-detects version changes and refreshes only what's outdated:
+Just re-run the installer — it hashes every file against the manifest and refreshes only what's outdated:
 
 ```
 npx kse-autodocs@latest
 ```
 
-Library files (templates, slash commands, Claude rule, Copilot prompts) refresh automatically on a version bump. `.github/copilot-instructions.md` is user-owned and left alone; compare it against the fresh copy at `.github/kse-autodocs/copilot-instructions-snippet.md` and merge by hand.
+Managed files that you haven't touched are refreshed silently. Files you've edited trigger an interactive prompt (keep all / overwrite all / review each / abort). The managed region inside `.github/copilot-instructions.md` is refreshed in place — your own instructions around the block are untouched.
 
-Pass `--force` to overwrite everything including user-owned files:
+Pass `--force` to overwrite everything including user-modified files:
 
 ```
 npx kse-autodocs@latest --force
+```
+
+Preview changes without touching anything:
+
+```
+npx kse-autodocs@latest --dry-run
 ```
 
 Existing `docs/AUTHORING.md` and other files inside `docs/` are **not** touched by the installer — they are only written by `/docs-init`, and only if they do not already exist. Teams can safely refresh the plugin without losing repo-level customizations.
@@ -212,21 +231,28 @@ To remove kse-autodocs from a repo:
 npx kse-autodocs@latest uninstall
 ```
 
-Shows what will be removed, asks for confirmation, then deletes:
+The uninstaller reads the manifest and only removes files whose hash still matches what it wrote. Any file you've edited is kept. Shown as a plan before confirmation:
 
 - `.claude/commands/docs-init.md` and `.claude/commands/docs-generate.md`
 - `.claude/rules/kse-autodocs.md`
 - `.github/prompts/docs-init.prompt.md` and `.github/prompts/docs-generate.prompt.md`
-- `.github/kse-autodocs/` (the whole folder)
+- `.github/kse-autodocs/` (the whole folder, including the manifest)
+- The managed region inside `.github/copilot-instructions.md` — stripped; any content you added around it is kept. If the file ends up empty, it's removed too.
 - Any parent directories that become empty (e.g. `.claude/`)
 
 **Never removed** (you decide what to do with them):
 
 - `CLAUDE.md` — not written by the installer in the first place
-- `.github/copilot-instructions.md` — Copilot's only instruction file, treated as user-owned
 - `docs/` — your repo's documentation
+- Any managed file you've edited since install — shown in the summary so you can delete them by hand
 
-Pass `--yes` to skip the confirmation prompt (e.g. for CI scripts).
+Flags:
+
+```
+npx kse-autodocs@latest uninstall --yes      # skip confirmation (CI scripts)
+npx kse-autodocs@latest uninstall --force    # remove user-modified files too
+npx kse-autodocs@latest uninstall --dry-run  # preview without removing
+```
 
 ---
 
