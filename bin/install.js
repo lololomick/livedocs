@@ -369,7 +369,7 @@ function decide(asset, manifest) {
     return { action: 'overwrite-preexisting', reason: 'file present, origin unknown', shippedHash };
   }
 
-  // region kind
+  // --- region kind
   const incoming = fs.readFileSync(asset.src, 'utf8').replace(/\s+$/, '');
   const incomingHash = hashString(incoming);
 
